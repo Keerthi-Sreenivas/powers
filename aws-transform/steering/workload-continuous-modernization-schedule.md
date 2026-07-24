@@ -117,7 +117,7 @@ Customer **MUST** already have an EC2 instance running with the `atx-ct` contain
 Specifically:
 
 1. EC2 instance running with one or more atx-ct containers active (CFN-managed via `atx-runner` stack, or any other source; both supported)
-2. Container has the CT server up (`docker exec ${CONTAINER_NAME} atx ct status --health` succeeds)
+2. Container is up (`docker exec ${CONTAINER_NAME} atx ct status --health` succeeds)
 3. Instance has `AmazonSSMManagedInstanceCore` attached (so SSM can target it)
 4. Customer has previously registered the source via `atx ct source add` (so a manual `atx ct analysis run` would work)
 
@@ -822,7 +822,7 @@ fi
 [ -z "\$RID" ] && { echo "=== \$(date) [ERROR] success but no RID extracted ===" >> \$LOG; exit 1; }
 echo "=== \$(date) [REMED] remediation \$RID started -- polling status ===" >> \$LOG
 
-# Poll every 30s until terminal status (atx ct remediation create does not support --wait)
+# Poll every 30s until terminal status
 STATUS=""
 while true; do
   STATUS=\$(sudo docker exec ${CONTAINER_NAME} bash -c "source /home/atxuser/.nvm/nvm.sh && nvm use 22 >/dev/null 2>&1 && export PATH=/home/atxuser/.local/bin:\\\$PATH && atx ct remediation status --id \$RID --json" 2>>\$LOG | jq -r .status 2>/dev/null)
@@ -937,7 +937,7 @@ if [ "$PATH_TYPE" = "batch" ]; then
   # ─────────────────────────────────────────────────────────────────
   # Provider-specific preamble (sets up source registration, tokens)
   # ─────────────────────────────────────────────────────────────────
-  PREAMBLE_COMMON="atx ct --version > /dev/null 2>&1 ; set -o pipefail && source /home/atxuser/.bashrc && export PATH=/home/atxuser/.local/bin:/usr/local/bin:/usr/bin:/bin && source /home/atxuser/.nvm/nvm.sh && nvm use 22 ; mkdir -p /home/atxuser/.aws/atx/logs ; atx ct server > /home/atxuser/.aws/atx/logs/server.log 2>&1 & sleep 15"
+  PREAMBLE_COMMON="atx ct --version > /dev/null 2>&1 ; set -o pipefail && source /home/atxuser/.bashrc && export PATH=/home/atxuser/.local/bin:/usr/local/bin:/usr/bin:/bin && source /home/atxuser/.nvm/nvm.sh && nvm use 22"
 
   case "$PROVIDER" in
     github)
