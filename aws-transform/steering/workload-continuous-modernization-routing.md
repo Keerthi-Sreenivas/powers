@@ -153,10 +153,10 @@ After a Custom transformation completes successfully, present this message:
 | [workload-continuous-modernization-status.md](workload-continuous-modernization-status.md)                   | System overview and health check                                                      |
 | [workload-continuous-modernization-source.md](workload-continuous-modernization-source.md)                   | Manage source connections                                                             |
 | [workload-continuous-modernization-setup.md](workload-continuous-modernization-setup.md)                     | Infrastructure setup and configuration                                                |
-| [workload-continuous-modernization-server.md](workload-continuous-modernization-server.md)                   | Start, stop, or restart the AWS Transform - continuous modernization (continuous modernization) server                                  |
-| [workload-continuous-modernization-ec2-execution.md](workload-continuous-modernization-ec2-execution.md)     | Run CT analysis/remediation on EC2 (new or existing instance)                         |
-| [workload-continuous-modernization-batch-execution.md](workload-continuous-modernization-batch-execution.md) | Run CT analysis on AWS Batch (Fargate) — single job, AWS-managed compute              |
-| [workload-continuous-modernization-schedule.md](workload-continuous-modernization-schedule.md)               | Schedule recurring analyses on an existing EC2 instance (EventBridge Scheduler + SSM) |
+| [workload-continuous-modernization-troubleshooting.md](workload-continuous-modernization-troubleshooting.md) | Diagnose setup and command execution failures                                         |
+| [workload-continuous-modernization-ec2-execution.md](workload-continuous-modernization-ec2-execution.md)     | Run remote analysis/remediation on EC2 via `atx ct remote` CLI commands                |
+| [workload-continuous-modernization-batch-execution.md](workload-continuous-modernization-batch-execution.md) | Run remote analysis/remediation on AWS Batch (Fargate) via `atx ct remote` CLI commands |
+| [workload-continuous-modernization-schedule.md](workload-continuous-modernization-schedule.md)               | Schedule recurring analysis/remediation via `atx ct schedule` CLI commands              |
 | [workload-continuous-modernization-reporting.md](workload-continuous-modernization-reporting.md)             | Generate an HTML report of continuous modernization analyses                                             |
 | [workload-continuous-modernization-security-agent.md](workload-continuous-modernization-security-agent.md)   | Security agent setup (admin) and runtime verification (executor)                      |
 

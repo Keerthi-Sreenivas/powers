@@ -73,9 +73,11 @@ The agent MUST:
 2. **Keep this list in working memory** throughout code generation, marking each REQ-* as "traced" when a corresponding annotation is written
 
 Each specification's header shows which business functions it covers, for example:
+
 ```
 > **Source Functions**: BatchDataProcessing-AccountProcessing, OnlineTransactionProcessing-AccountManagement
 ```
+
 This determines which `spec/<FunctionName>/traceability.yaml` files contain the legacy rule hashes that back-fill the `legacy_rule_ids` field in `traceability-modern.yaml`.
 
 **This list is the source of truth.** Code generation is not complete for a service until every REQ-* on the list has been annotated in at least one code location.
@@ -252,6 +254,8 @@ architecture: '<monolith|microservices|serverless|modular>'
 project_root: '<relative path to source root>'
 
 # The source functions this service was built from (from the spec header)
+# Read the **Source Functions** comma-separated list, e.g.:
+# > **Source**: BC-1 ... | **Source Functions**: FunctionA, FunctionB
 source_functions:
   - <FunctionName>   # e.g., OnlineTransactionProcessing-AccountManagement
   - <FunctionName>   # e.g., BatchDataProcessing-AccountProcessing
@@ -370,8 +374,8 @@ User: "Implement the account-service from the spec"
 Agent:
 1. Reads outputs/microservices/account-service-specification.md
    → Extracts 49 REQ-* IDs into tracking checklist
-   → Notes source functions: BatchDataProcessing-AccountProcessing,
-     OnlineTransactionProcessing-AccountManagement
+   → Reads spec header: `> **Source**: BC-1 ... | **Source Functions**: BatchDataProcessing-AccountProcessing, OnlineTransactionProcessing-AccountManagement`
+   → Collects all source functions from the comma-separated list
 2. Detects target: Java (found pom.xml)
 3. Generates TracesRequirement.java annotation type (first time only)
 4. Writes AccountService.java with @TracesRequirement annotations on each
