@@ -4,7 +4,7 @@ displayName: "AWS Transform"
 description: "Migrate, modernize, and upgrade codebases: .NET Framework to .NET 8/10, mainframe COBOL to Java, VMware VMs to EC2, SQL Server/Oracle/MySQL to Aurora, and Java/Python/Node.js version upgrades or AWS SDK migrations. Assess, plan, and execute code transformations from your IDE."
 keywords: ["migrate", "modernize", "mainframe", "cobol", "vmware", "dotnet", ".net framework", "windows", "sql server", "oracle", "mysql", "aurora", "ec2 migration", "rehost", "lift-and-shift", "replatform", "legacy", "code upgrade", "sdk migration", "boto3", "java upgrade", "atx", "continuous modernization", "AWS Transform - continuous modernization"]
 author: "AWS"
-version: "2.4.0"
+version: "2.5.0"
 ---
 
 # AWS Transform Power
@@ -144,7 +144,7 @@ Once routed to continuous modernization:
 
 7. Ensure a supported region has been selected (see [workload-continuous-modernization-setup.md](steering/workload-continuous-modernization-setup.md) "Choose your region") and prefixed inline (`AWS_REGION=$ATX_REGION`) on every `atx ct` command.
 
-8. Then use the appropriate continuous modernization steering file — see `steering/workload-continuous-modernization-routing.md` and the `workload-continuous-modernization-*.md` files referenced from it.
+8. Then use the appropriate continuous modernization steering file — see `steering/workload-continuous-modernization-routing.md` and the `workload-continuous-modernization-*.md` files referenced from it. Recurring/scheduled intent ("weekly scan", "every Monday", "on a schedule", "cron") routes to `workload-continuous-modernization-schedule.md`: scheduling is a real, shipped capability (`atx ct schedule create/list/get/enable/disable/delete`) that runs on remote infrastructure ONLY — never claim it doesn't exist, and never offer a local cron/systemd/launchd entry as a substitute or fallback.
 
 **When in doubt for a workload-unspecified request → continuous modernization.** This default applies ONLY after Step B has cleared — VMware, SQL, and mainframe never fall through to continuous modernization regardless of how the question is phrased; .NET only routes to continuous modernization after the user picks "analyze for tech debt / security / CVEs" in Step B's intent question (both "Modernize" and "Assessment for modernization" stay in the .NET workload). Once routed, do NOT manually read source files to find issues — that's what `atx ct analysis run` does.
 

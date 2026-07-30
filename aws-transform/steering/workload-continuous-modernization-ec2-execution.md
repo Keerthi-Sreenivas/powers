@@ -79,7 +79,7 @@ EC2 supports 1-5 parallel workers (containers) on a single instance. Jobs are di
 | Customer intent | Workers | Instance type |
 |---|---|---|
 | Single analysis / default | 1 | m5.2xlarge |
-| 2 analysis types in parallel | 2 | m5.4xlarge |
+| 2 parallel analyses (e.g. 2 repos, or 2 runs) | 2 | m5.4xlarge |
 | 3-4 parallel jobs | 3-4 | m5.4xlarge |
 | 5 parallel jobs (max) | 5 | m5.8xlarge |
 | 6+ parallel jobs | Use Batch instead | — |
@@ -160,7 +160,7 @@ Requires Executor credentials. Jobs are distributed round-robin across workers.
 
 ```bash
 atx ct remote analysis \
-  --types rapid-techdebt-analysis \
+  --type rapid-techdebt-analysis \
   --sources <src> \
   --mode ec2 \
   --stack-name <stack-name> \
@@ -168,11 +168,11 @@ atx ct remote analysis \
 ```
 
 Fan-out options:
-- `--types type1,type2` — multiple analysis types
+- `--type <type>` — exactly ONE analysis type per run (to run multiple types, submit once per type)
 - `--sources src1,src2` — multiple sources
 - `--repos src::repo1,src::repo2` — specific repos (fully qualified)
 - `--labels java,spring` — filter repos by labels (AND semantics)
-- `--transformation-name <name>` — for `--types custom`
+- `--transformation-name <name>` — for `--type custom`
 - `-g key=value` — configuration for custom transformations
 
 Stack targeting (choose one):
@@ -200,9 +200,11 @@ Shows per-job status with completion counts.
 # Cancel all jobs in a group
 atx ct remote cancel --group <ec2-group-id>
 
-# Cancel a single job
+# Cancel a single job (a job key `repo#type` / `repo#findingId`, or its result ULID)
 atx ct remote cancel --group <ec2-group-id> --job <repo#type>
 ```
+
+`--job` kills only that job's in-container process and marks only that repo's slot cancelled — sibling repos sharing the analysis id keep running, and the aggregate settles once every slot is terminal.
 
 ### 6. Submit Remediation
 
@@ -261,7 +263,7 @@ Use an existing customer-owned EC2 instance instead of provisioning a new stack.
 
 ```bash
 atx ct remote analysis \
-  --types rapid-techdebt-analysis \
+  --type rapid-techdebt-analysis \
   --sources <src> \
   --mode ec2 \
   --existing-instance <instance-id> \

@@ -181,7 +181,6 @@ atx ct remediation create --ids <id1,id2> --name "Fix name" --tags team=alpha,en
 ```
 
 **Behavior:**
-
 - `--tags key=value,key2=value2` accepts comma-separated pairs in a single flag (e.g. `--tags team=alpha,env=prod`).
 - Tags are optional. If omitted, the remediation is untagged.
 - If `~/.aws/atx/settings.json` defines `applyTags` (an array of tag maps), those defaults are applied automatically even without explicit `--tags`. An explicit `--tags` override merges **per key** over the settings defaults.
