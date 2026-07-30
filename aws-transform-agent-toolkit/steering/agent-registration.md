@@ -388,6 +388,7 @@ The `agentCard` field describes the agent's identity, capabilities, skills, and 
 | `defaultInputModes` | string[] | No | Input modes (e.g., `["text"]`) |
 | `defaultOutputModes` | string[] | No | Output modes (e.g., `["text"]`) |
 | `capabilities` | object | Yes | Capability flags and extensions (see below) |
+| `skills` | array | No | Discrete capabilities the agent advertises (see [Skills](#skills) below). Validated only if present and non-empty. |
 | `tags` | string[] | No | Freeform tags |
 
 ##### capabilities Structure
@@ -433,13 +434,24 @@ Provider params:
 |-------|------|----------|-------------|
 | `name` | string | Yes | Publisher display name |
 | `accountId` | string | Yes | 12-digit AWS account ID (pattern: `^[0-9]{12}$`) |
-| `ownerType` | string | Yes | `DIRECT_AGENT` or `MARKETPLACE_AGENT` |
+| `ownerType` | string | Yes | `INTERNAL_AGENT`, `DIRECT_AGENT`, or `MARKETPLACE_AGENT`. |
 | `contactInfo` | array | Yes | List of contact entries (at least one required) |
 
-Contact entry types: `email`, `phone`, `slack`, `other`
+Contact entry types: `email`, `phone`, `slack`, `cti`, `other`
 
 **Contact validation rules:**
 - `type` — Required. Must be non-null, non-blank, and one of the valid types above. Throws `ValidationException` if missing or invalid.
+- `value` — Required, non-blank. For most types this is the contact value itself (e.g. the email address or phone number). For `cti` contacts, `value` is an object with non-blank `category`, `type`, and `item` fields.
+- When `ownerType` is `INTERNAL_AGENT`, at least one `contactInfo` entry must be of type `cti`. Not required for `DIRECT_AGENT` or `MARKETPLACE_AGENT`.
+
+Example `cti` contact entry:
+
+```json
+{
+  "type": "cti",
+  "value": { "category": "<category>", "type": "<type>", "item": "<item>" }
+}
+```
 
 **2. Agent Dependencies** — Runtime dependencies
 
@@ -482,6 +494,99 @@ Connector entry fields:
 | `required` | boolean | Yes | Whether the connector is required |
 | `description` | string | Yes | Connector description |
 
+##### Optional Extensions
+
+These two extensions are optional and validated only if included.
+
+**Agent Code Repo** — Source repository for the agent
+
+```json
+{
+  "name": "Agent Code Repo",
+  "description": "Source repository for this agent",
+  "params": {
+    "codeUrl": "https://github.com/example/agent",
+    "branch": "main"
+  }
+}
+```
+
+Code repo params:
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `codeUrl` | string | Yes | Repository URL. Up to 2048 characters. Must begin with `https://`. |
+| `branch` | string | Yes | Branch name. Up to 256 characters. Must start with a letter or digit; may otherwise contain letters, digits, dots, underscores, slashes, and hyphens. |
+
+**AgentCore Image** — Container image for an AgentCore-hosted agent
+
+```json
+{
+  "name": "AgentCore Image",
+  "description": "Container image for this agent",
+  "params": {
+    "imageUri": "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-agent:latest"
+  }
+}
+```
+
+AgentCore Image params:
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `imageUri` | string | Yes | ECR image URI. Up to 512 characters. Format: `{accountId}.dkr.ecr.{region}.amazonaws.com/{repo}:{tag}`. |
+
+##### Skills
+
+`skills` is an optional top-level `agentCard` array describing the discrete capabilities the agent advertises. Omit it entirely if the agent has none. When present and non-empty, each skill is validated.
+
+```json
+{
+  "id": "example_skill",
+  "name": "Example Skill",
+  "description": "Does something useful.",
+  "tags": ["example"]
+}
+```
+
+Skill fields:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | Yes | Non-blank skill identifier. |
+| `name` | string | Yes | Non-blank. Up to 100 characters. May contain only letters, digits, spaces, hyphens, and underscores. |
+| `description` | string | Yes | Non-blank. Up to 500 characters. |
+| `tags` | string[] | Yes | Non-empty list of tags. |
+| `extensions` | object | No | Declares where the skill implementation lives. Validated only if present (see below). |
+
+A skill that declares a source uses `extensions.source`:
+
+```json
+{
+  "id": "registry_skill",
+  "name": "Registry Skill",
+  "description": "A skill backed by the skill registry.",
+  "tags": ["example"],
+  "extensions": {
+    "executionMode": "AUTOMATIC",
+    "source": {
+      "type": "SKILL_REGISTRY",
+      "details": { "skillName": "my-skill", "version": "1.0.0" }
+    }
+  }
+}
+```
+
+Skill `extensions` fields:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `executionMode` | No | One of `AUTOMATIC`, `INTERACTIVE`, `HYBRID`. |
+| `source` | Yes (if `extensions` present) | Where the skill implementation comes from. |
+| `source.type` | Yes | One of `SKILL_REGISTRY`, `TD_REGISTRY`, `OTHER`. |
+| `source.details` | Yes | Non-empty map. Required keys depend on `type`: `SKILL_REGISTRY` → `skillName` + `version`; `TD_REGISTRY` → `tdName` + `version`; `OTHER` → all values must be non-blank. |
+
+For `SKILL_REGISTRY` sources, the referenced skill must exist and the caller must have access, or publish fails.
 
 ##### Minimal agentCard Example
 
@@ -588,7 +693,15 @@ The minimum structure that passes boto3 and server-side validation (works for bo
           }
         }
       ]
-    }
+    },
+    "skills": [
+      {
+        "id": "example_skill",
+        "name": "Example Skill",
+        "description": "Does something useful.",
+        "tags": ["example"]
+      }
+    ]
   }
 }
 ```
