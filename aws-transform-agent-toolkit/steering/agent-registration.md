@@ -402,6 +402,7 @@ The `capabilities` object contains boolean flags and a required `extensions` arr
 | `legacyTaskLink` | boolean | Yes | Legacy task link support flag |
 | `webAppV2` | boolean | Yes | Web app v2 support flag |
 | `legacyRestartable` | boolean | Yes | Legacy restartable support flag |
+| `chatFileUpload` | boolean | No | Whether users can upload files directly via chat | 
 | `extensions` | array | Yes | Required extensions (see below) |
 
 ##### Required Extensions
