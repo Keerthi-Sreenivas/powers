@@ -163,7 +163,6 @@ read -s TOKEN && atx ct source add --name <name> --provider github --org <org> -
 ```
 
 **Behavior:**
-
 - `--tags key=value,key2=value2` accepts comma-separated pairs in a single flag (e.g. `--tags team=alpha,env=prod`).
 - Tags are optional. If omitted, the source is untagged (visible to all roles, no isolation).
 - Tags are registered with the backend at creation time (tag-on-create). They cannot be modified via `source add` after creation.

@@ -210,7 +210,6 @@ atx ct analysis run --type tech-debt-comprehensive --source <name> --tags team=a
 ```
 
 **Behavior:**
-
 - `--tags key=value,key2=value2` accepts comma-separated pairs in a single flag (e.g. `--tags team=alpha,env=prod`).
 - Tags are optional. If omitted, the analysis and its findings are untagged.
 - Tags are injected into the `--atxct-configuration` payload passed to the transformation agent. When the agent calls `report_finding`, the tags are forwarded to `BatchCreateFindings` — so findings inherit the analysis's tags automatically.

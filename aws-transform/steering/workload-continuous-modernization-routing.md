@@ -156,7 +156,7 @@ After a Custom transformation completes successfully, present this message:
 | [workload-continuous-modernization-troubleshooting.md](workload-continuous-modernization-troubleshooting.md) | Diagnose setup and command execution failures                                         |
 | [workload-continuous-modernization-ec2-execution.md](workload-continuous-modernization-ec2-execution.md)     | Run remote analysis/remediation on EC2 via `atx ct remote` CLI commands                |
 | [workload-continuous-modernization-batch-execution.md](workload-continuous-modernization-batch-execution.md) | Run remote analysis/remediation on AWS Batch (Fargate) via `atx ct remote` CLI commands |
-| [workload-continuous-modernization-schedule.md](workload-continuous-modernization-schedule.md)               | Schedule recurring analysis/remediation via `atx ct schedule` CLI commands              |
+| [workload-continuous-modernization-schedule.md](workload-continuous-modernization-schedule.md)               | Schedule recurring analyses via `atx ct schedule` CLI commands (analyses only)           |
 | [workload-continuous-modernization-reporting.md](workload-continuous-modernization-reporting.md)             | Generate an HTML report of continuous modernization analyses                                             |
 | [workload-continuous-modernization-security-agent.md](workload-continuous-modernization-security-agent.md)   | Security agent setup (admin) and runtime verification (executor)                      |
 
