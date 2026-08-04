@@ -104,6 +104,7 @@ This SOP defines how you, the agent, create and deploy genomics workflows for AW
 - You MUST reference the package created in Step 1 as the workflow `definition_source`.
 - You MUST reference the package as a file path or S3 URI.
 - Call `GetAHOWorkflow` to verify the workflow was created successfully.
+  - Creation is asynchronous: `CreateAHOWorkflow` returns status `CREATING`, so you MUST poll until the status becomes `ACTIVE`. DO NOT treat the create response itself as success — an invalid definition is accepted at submission time and reported as `FAILED` only on a subsequent `GetAHOWorkflow`. See the [Troubleshooting SOP](./troubleshooting.md) for creation failure causes.
 
 ### Step 3. Run the Workflow
 - Follow the [Running a Workflow SOP](./running-a-workflow.md) to execute the deployed workflow.

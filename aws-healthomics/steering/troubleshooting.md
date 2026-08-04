@@ -6,7 +6,11 @@ This SOP defines how you, the agent, diagnose and resolve common HealthOmics wor
 
 ## Workflow Creation Failure
 
-IF a workflow fails to reach `CREATED` status, check these causes in order:
+Workflow creation is asynchronous. `CreateAHOWorkflow` returns HTTP 200 with status `CREATING`; the workflow then transitions to `ACTIVE` or `FAILED`. A 200 response is NOT evidence of a valid workflow — you MUST poll `GetAHOWorkflow` until the status leaves `CREATING`. Invalid definitions are accepted at submission time and reported only as the later `FAILED` status, with the parser error in `statusMessage`.
+
+ALSO read `statusMessage` on an `ACTIVE` workflow. It carries warnings that do not block creation but change how the workflow is interpreted — for example `MissingVersion, document should declare WDL version; draft-2 assumed`, or a report that no input parameters were found.
+
+IF a workflow fails to reach `ACTIVE` status, check these causes in order:
 
 1. The workflow zip package is corrupted or missing.
 2. The workflow zip package has multiple workflow definition files at the top level. There MUST be only one `main.wdl`, `main.nf`, etc. at the top level — dependencies MUST be in sub-directories.
