@@ -58,7 +58,7 @@ AWS HealthOmics requires:
 
 **Steps**:
 1. Scan all WDL files for runtime sections.
-2. Identify tasks missing `cpu`, `memory`, or `disks` attributes.
+2. Identify tasks missing `cpu` or `memory` attributes. Note any `disks` attributes as well, but DO NOT treat a missing `disks` as a defect — see [Silent Incompatibilities](#silent-incompatibilities) for what HealthOmics does with it.
 3. Check for dynamic resource calculations.
 4. Add or update runtime attributes in all tasks:
    ```wdl
@@ -92,16 +92,22 @@ AWS HealthOmics requires:
    - Ensure all imported WDL files are the same version as the main workflow.
    - Update import statements to use proper aliasing.
    - Check for circular dependencies.
-4. Lint:
+4. Choose the engine. `CreateAHOWorkflow` accepts `WDL` or `WDL_LENIENT`:
+   - `WDL_LENIENT` "allows for some WDL directives that don't strictly meet the WDL spec and can be useful when migrating legacy workflows designed to run on Cromwell." PREFER it for Cromwell-origin definitions that have not been brought fully to spec; use `WDL` once the definition is spec-compliant.
+   - Neither engine is a substitute for the version upgrade in step 2. A definition with no `version` declaration registers `ACTIVE` under BOTH engines, with `MissingVersion, document should declare WDL version; draft-2 assumed` in `statusMessage` — creation does not reject it, so ENSURE the version is declared rather than relying on the engine to object.
+   - DO NOT treat the lenient engine as a correctness net. Its leniency applies to registration-time syntax, NOT to runtime type coercion: a lossy conversion such as a `String` `"3.7"` supplied to an `Int` registers as `ACTIVE` under BOTH engines and fails identically once the task runs. Choosing `WDL_LENIENT` does not buy looser typing at run time.
+5. Lint:
    - Call `LintAHOWorkflowDefinition` or `LintAHOWorkflowBundle` to verify syntax.
    - For large workflows, use `miniwdl check` if available locally.
+   - Read the `Return code:` in the tool's `raw_output` to judge the result. A parse failure can still be reported with `"status": "success"` at the top level, so a check that reads only `status` passes broken files.
    - Resolve all issues.
 
 **Done WHEN**:
 - All WDL files declare version 1.0 or higher.
 - No draft-2 syntax remains.
-- Syntax validation passes for all WDL files.
+- Syntax validation passes for all WDL files, confirmed via `Return code:` and not the top-level `status` alone.
 - All imports resolve correctly.
+- The engine (`WDL` or `WDL_LENIENT`) is chosen deliberately and noted in the workflow's `README.md` (or `.healthomics/config.toml`), so later versions register with the same one.
 
 ### Phase 4: Reference and Input File Migration
 
@@ -238,12 +244,120 @@ workflow MyWorkflow {
 { "WorkflowName.reference_fasta": "s3://bucket/references/Homo_sapiens/GATK/GRCh38/Sequence/reference.fasta" }
 ```
 
+## Silent Incompatibilities
+
+These are Cromwell habits that survive every gate in this SOP — none is caught by lint or by registration. Most produce no error at all: the run reaches COMPLETED and the result means something other than what the definition intended, either because a directive was silently ignored or because it means something different here than it did under Cromwell. AUDIT for each explicitly.
+
+### Outputs written outside the task working directory
+
+```wdl
+# Before — the task exits 0 and the data is gone
+samtools sort -o /data/out.bam in.bam
+# After — write into the working directory and collect it in the output block
+samtools sort -o out.bam in.bam
+```
+
+Output collection is relative to the task working directory, so a file written to an absolute path elsewhere is not collected while the task still exits 0 — data loss, not a failure. This is distinct from Phase 5, which covers outputs that were never declared; here the output IS declared and the task wrote it somewhere that is not collected.
+
+DETECT by scanning command blocks for absolute paths given to output flags (`-o`, `-O`, `--output`, `>`) and to redirections. Scratch writes under `/tmp` are fine — the concern is anything the `output {}` block expects to find.
+
+### `String` used to pass a directory of files
+
+HealthOmics localizes values declared as file types — `File`, `Directory`, `Array[File]`, and `File` fields inside structs. A `String` is opaque text, so nothing is staged: the service has no way to know it names data.
+
+```wdl
+String ref_dir            # nothing is localized
+# command: ~{ref_dir}/genome.fasta.bwt
+```
+
+This is a common Cromwell-ism, where a shared filesystem made it work. The error surfaces on a file the author never mentioned (a `.bwt` index, for example), several lines away from the declaration that caused it. DETECT by finding every `String` input concatenated with `/` in a command block, and declare each required file as a `File` input — including index companions.
+
+### `preemptible` carried over from Cromwell
+
+In HealthOmics `preemptible` has nothing to do with spot or preemptible capacity. It opts out of automatic retries for service errors:
+
+> HealthOmics supports up to two retries for a task that failed because of service errors (5XX HTTP status codes). You can configure the maximum number of retries (1 or 2) and you can opt out of retries for service errors. By default, HealthOmics attempts a maximum of two retries. The following example sets `preemptible` to opt out of retries for service errors: `{ preemptible: 0 }`
+
+There is no spot or discounted-capacity concept attached to this directive in HealthOmics. `0` opts out of 5XX retries; `1` and `2` set the retry limit, and `2` is already the default — so a Cromwell `preemptible: 2`, which asked for two attempts on preemptible VMs, becomes a no-op that still reads as a cost control. The documented values are `0`, `1`, and `2`; behavior for anything higher is not documented.
+
+REMOVE the directive unless the intent really is to control 5XX retry behavior, and do NOT read an inherited non-zero value as a request for cheaper compute.
+
+### Thread counts not tied to the CPU request
+
+```wdl
+# Before — these drift apart
+Int threads = 16
+runtime { cpu: 4 }
+# After — one value, referenced twice
+Int threads = cpu_count
+runtime { cpu: cpu_count }
+```
+
+A literal in a flag (`-t 16`) is visible on review, but legacy code more often declares `Int threads = 16` and writes `-t ~{threads}`, putting the number nowhere near the flag. Oversubscribing degrades throughput and undersubscribing wastes the reservation; neither is an error.
+
+### Unbounded `scatter`
+
+Cromwell deployments were bounded by a cluster queue. HealthOmics has no equivalent, so a scatter over an input list expands as wide as the list. Create a run group to bound it:
+
+```bash
+aws omics create-run-group --name my-guard \
+    --max-cpus 96 \
+    --max-runs 4 \
+    --max-duration 2880   # minutes, not hours — 2880 = 48h
+```
+
+Size `--max-duration` to the workflow, not to the example. A run that exceeds it fails automatically.
+
+### `disks` read as a size, not as a disk layout
+
+A Cromwell `disks: "local-disk 700 SSD"` describes a volume. HealthOmics reads only the number:
+
+> HealthOmics accepts all standard WDL 1.1 `disks` forms. The mount path and disk type specifier (`SSD`, `HDD`) are ignored — only the numeric size is extracted. If multiple entries are declared, the sizes are summed into a single `/tmp` allocation.
+
+So a design that split scratch across several named volumes does not survive the migration, and no error says so. Whether the size is used at all depends on the run:
+
+- Default (`scratchStorageMode` omitted, which resolves to `SHARED`): `disks` is ignored for CPU tasks, no local storage volume is provisioned, and `/tmp` is backed by the shared filesystem. GPU tasks are unaffected — they always use local NVMe.
+- `scratchStorageMode=LOCAL`: `disks` is honored as a hint for per-task ephemeral `/tmp`, rounded up to the next 16 GiB. It does NOT influence instance type, which is selected from `cpu`, `memory`, and `acceleratorType`.
+
+DO NOT read a `disks` value in a migrated definition as evidence that per-task scratch is configured. Confirm the run's `scratchStorageMode` first.
+
+### `maxRetries` without findutils in the image
+
+`maxRetries` retries a task that ran out of memory, doubling memory each attempt:
+
+> HealthOmics supports retries for a task that failed because it ran out of memory (container exit code 137, 4XX HTTP status code). HealthOmics doubles the amount of memory for each retry attempt. By default, HealthOmics doesn't retry for this type of failure.
+
+It has a container dependency that is easy to miss:
+
+> Task retry for out of memory requires GNU findutils 4.2.3+. The default HealthOmics image container includes this package. If you specify a custom image in your WDL definition, make sure that the image includes GNU findutils 4.2.3+.
+
+So a task declaring `maxRetries` on a custom image may not retry at all, and that outcome is indistinguishable from "retried and failed again". CONFIRM the package before relying on the directive:
+
+```bash
+docker run --rm <image> find --version
+```
+
+### `GB` where the task was tuned in `GiB`
+
+`memory: "8 GB"` and `memory: "8 GiB"` both parse and both run. They differ by 7.4% — about 600 MB at 8, about 4.7 GB at 64 — and for a task tuned to its working-set limit that is the difference between completing and an OOM kill (exit 137).
+
+PREFER `GiB` when porting a task that was tuned on-premises: the tool's own memory reporting almost certainly meant `GiB`. ENSURE a single unit is used across every task in the workflow — a mixed set of examples teaches the next reader to mix them.
+
+A bare `memory: 8` is a separate problem — Cromwell read it as GB, the WDL spec expects a string with a unit — and it belongs to the Phase 2 audit, not here.
+
+### Absolute and remote imports
+
+HealthOmics resolves WDL imports from the workflow zip package. An `import "/home/shared/wdl/tasks/align.wdl"` resolves on the origin cluster but that path is not in the package, and an `http(s)://` import is not fetched. Rewrite both as relative paths within the bundle.
+
+This one does fail rather than pass silently, but it fails at a distance from its cause: registration reports `FAILED` on a missing dependency, and the import validation in Phase 3 step 3 checks versions, aliasing, and cycles — not whether each import path exists in the package. On-prem definitions almost always carry at least one absolute import.
+
 ## WDL-Specific Considerations
 
 - **Scatter-Gather**: Ensure scattered tasks have appropriate resources. Verify `Array[File]` outputs are properly collected.
 - **Sub-Workflows**: Ensure all imported WDL files are migrated. Verify sub-workflow outputs are properly passed.
 - **Optional Inputs**: Handle `File?` inputs gracefully. Use `select_first()` or `defined()` appropriately.
 - **Command Section**: Use `~{}` for variable interpolation (WDL 1.0+). Avoid hardcoded paths. Use `sep()` for array joining.
+- **Defects that pass every gate**: see [Silent Incompatibilities](#silent-incompatibilities) above for cases that lint clean, register `ACTIVE`, and reach COMPLETED with a result that differs from what the definition intended.
 
 ## Dependencies
 
@@ -260,4 +374,7 @@ workflow MyWorkflow {
 - [WDL 1.0 Specification](https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md)
 - [WDL 1.1 Specification](https://github.com/openwdl/wdl/blob/main/versions/1.1/SPEC.md)
 - [WDL on AWS HealthOmics](https://docs.aws.amazon.com/omics/latest/dev/workflows.html)
+- [WDL support in HealthOmics](https://docs.aws.amazon.com/omics/latest/dev/workflow-languages-wdl.html) — per-attribute behavior for `preemptible`, `maxRetries`, `disks` forms, `returnCodes`, `omicsTimeout`
+- [Ephemeral storage for HealthOmics runs](https://docs.aws.amazon.com/omics/latest/dev/workflows-ephemeral-storage.html) — `scratchStorageMode` and when `disks` is honored
+- [Compute and memory requirements for HealthOmics tasks](https://docs.aws.amazon.com/omics/latest/dev/task-resources.html) — states that per-task storage specifications are ignored, which holds for the default `SHARED` mode; see the ephemeral storage page for `LOCAL`
 - [ECR Documentation](https://docs.aws.amazon.com/ecr/)
