@@ -24,31 +24,44 @@ AWS HealthOmics requires:
 
 ### Phase 1: Container Inventory and Migration
 
-**Objective**: Identify all containers and create ECR migration plan.
+**Objective**: Identify all containers and make them available to HealthOmics from private ECR.
 
 **Steps**:
 1. Extract all unique container URIs from runtime sections:
    - Scan all WDL files for `docker:` and `container:` runtime attributes.
    - Check imported WDL files and sub-workflows.
    - Identify containers in struct/object definitions.
-2. Generate `container_inventory.csv` with columns: Task name, Original container URI, Container registry, Tool name and version, Target ECR URI.
-3. Create `scripts/migrate_containers_to_ecr.sh` to:
-   - Find or create ECR repositories for each tool with access policies allowing the omics principal to read.
-   - Pull each container from source registry ensuring x86 containers are pulled.
-   - Tag for ECR: `<account>.dkr.ecr.<region>.amazonaws.com/<workflow-name>/<tool>:<version>`
-   - Push to ECR repositories.
-4. Create `scripts/update_container_refs.sh` to:
-   - Replace all container URIs in WDL task runtime sections.
-   - Update to use ECR registry.
-   - Parameterize container references.
-5. Create `healthomics.inputs.json` with ECR registry base path parameter.
+2. Generate `container_inventory.csv` with columns: Task name, Original container URI, Container registry, Tool names and versions, Target ECR URI, Approach (`registry-map` or `uri-replacement`).
+3. For each container, CHOOSE one approach — see **Registry Map or URI Replacement** under Technical Patterns:
+   - **Registry map (PREFERRED)**: the WDL keeps its original public URIs and HealthOmics redirects them to your pull-through caches. Use this WHERE the image itself is unchanged — same repository, same tag, served from your private ECR instead of the public registry.
+   - **URI replacement**: edit the WDL. Use this WHERE the migration changes which repository a task pulls from, because the command block's correctness then depends on which image is used.
+4. Stage the containers using the MCP tools — PREFER these over hand-written `docker pull`/`docker push` scripts. Follow the [ECR Pull Through Cache SOP](./ecr-pull-through-cache.md):
+   - Call `ListPullThroughCacheRules` first. IF a valid cache already exists for an upstream registry, reuse it — DO NOT create another.
+   - Call `CreatePullThroughCacheForHealthOmics` for each remaining upstream registry (`docker-hub`, `quay`, `ecr-public`). This also sets the registry permissions policy and repository creation template that HealthOmics needs.
+   - Call `CheckContainerAvailability` with `initiate_pull_through: true` to populate and confirm each image.
+   - Call `CloneContainerToECR` for registries NOT supported by pull-through cache.
+   - IF using a registry map: call `CreateContainerRegistryMap`, then pass it to `CreateAHOWorkflow` via `container_registry_map` (or `container_registry_map_uri`).
+   - IF replacing URIs: update the `docker`/`container` values in the WDL task runtime sections, and PREFER parameterizing the registry base path.
+
+   > **The registry map is a workflow attribute, not a run parameter.** It is supplied at workflow creation, and registration does not appear to validate the definition against it: a workflow whose tasks name public registries registers as `ACTIVE` and is unrunnable. The run then fails partway through with `has an invalid structure. Provide a valid ECR image URI`, naming the task it reached rather than the missing attribute, after earlier tasks have already consumed billed compute. ENSURE the map is attached at creation — a successful `CreateAHOWorkflow` does NOT confirm it.
+5. Verify container CONTENTS, not just availability. For each task:
+   - List the binaries its `command` block invokes. Take the first bare word of each pipeline stage and of each line, including inside `if`/`for` bodies, and discard shell builtins (`set`, `cd`, `echo`, `if`, `then`, `fi`, `for`, `do`, `done`, `mkdir`, `mv`, `cp`) and `~{}` interpolations.
+   - Confirm each one is present in that task's image:
+     ```bash
+     docker run --rm <image> sh -lc 'command -v bwa samtools bcftools'
+     ```
+   - IF any binary is absent, the task WILL fail at run time — resolve it via step 6 before proceeding.
+
+   > No static check substitutes for this. `CheckContainerAvailability`, `aws ecr describe-images`, `miniwdl check`, and `CreateWorkflow` all pass for an image that exists but lacks a tool the command block pipes to; the task then dies with `command not found`. Single-tool biocontainer images are a frequent source: an image named for one tool often does NOT carry the others in the same pipeline.
+6. IF a task needs several tools in one command, use a multi-tool image (for example a `mulled-v2-*` biocontainer). This changes the repository, so treat it as URI replacement per step 3, and record every tool's version in `container_inventory.csv` — they MAY differ from the single-tool images they replace.
+7. Create `healthomics.inputs.json` with an ECR registry base path parameter IF container references are parameterized.
 
 **Done WHEN**:
-- `container_inventory.csv` documents all containers.
-- Migration script pushes all containers to ECR.
-- All WDL task runtime sections use ECR URIs.
-- Zero references to external registries remain.
-- At least 5 key containers verified accessible from ECR.
+- `container_inventory.csv` documents all containers and records the approach chosen for each.
+- All containers are pullable by HealthOmics from private ECR.
+- IF using URI replacement: all WDL task runtime sections use ECR URIs, and zero references to external registries remain.
+- IF using a registry map: every external registry still referenced in the WDL has a mapping entry, and the map is passed to `CreateAHOWorkflow`.
+- For every task, each command invoked in its `command` block is confirmed present in that task's image using the check in step 5.
 
 ### Phase 2: Runtime Attribute Audit
 
@@ -193,14 +206,39 @@ AWS HealthOmics requires:
 
 ## Technical Patterns
 
+### Registry Map or URI Replacement
+
+Decide per container by asking whether the migration changes the image's TRANSPORT or its IDENTITY.
+
+| The change is | Same repository and tag, served from private ECR | A different repository (different tool set or versions) |
+|---|---|---|
+| Approach | Registry map | Edit the WDL |
+| WDL | Unmodified — keeps the public URI | `docker`/`container` value replaced |
+| Why | The image is identical, so the redirect hides nothing | The command block's correctness now depends on which image is used |
+
+DO NOT hide an identity change inside a registry map. A task whose runtime says `bwa` while the map redirects it to a different repository executes something other than what the WDL says, and the next reader has no way to see it from the workflow definition.
+
+PREFER pinning by digest (`repository@sha256:...`) over a mutable tag on either path. A tag can be reassigned upstream, in which case the same WDL resolves to a different image on a later run.
+
 ### Container Runtime (Before/After)
+
+Both paths add the required `cpu` and `memory` attributes. They differ only in whether the image reference changes.
+
 ```wdl
 # Before
 runtime {
     docker: "quay.io/biocontainers/bwa:0.7.17--h5bf99c6_8"
 }
 
-# After
+# After — registry map path: the image reference is UNCHANGED.
+# The map is passed to CreateAHOWorkflow, which redirects quay.io to your pull-through cache.
+runtime {
+    docker: "quay.io/biocontainers/bwa:0.7.17--h5bf99c6_8"
+    cpu: 4
+    memory: "8 GB"
+}
+
+# After — URI replacement path, for when the repository itself changes.
 runtime {
     docker: "<account-id>.dkr.ecr.<region>.amazonaws.com/workflow-name/bwa:0.7.17--h5bf99c6_8"
     cpu: 4
@@ -252,7 +290,7 @@ workflow MyWorkflow {
 - S3 bucket(s) created with appropriate permissions
 - HealthOmics service access
 - HealthOmics MCP server
-- Docker/Finch/Podman installed for container operations
+- Docker/Finch/Podman installed for container operations, including verifying image contents (Phase 1)
 
 ## References
 
