@@ -64,7 +64,7 @@ Required. Identifies the plugin and the spec version it targets.
 - `keywords` - Array of search/discovery tags
 - `extensions` - Client-specific data keyed by reverse-domain namespace
 
-The manifest schema is closed: only the fields listed above are permitted at the top level. Unknown fields are reported and ignored but do not invalidate the manifest.
+The schema defines a fixed set of top-level fields; unknown fields are reported and ignored but do not invalidate the manifest.
 
 ## skills/ (Agent Skills)
 
