@@ -73,7 +73,7 @@ AWS HealthOmics requires:
 
 **Done WHEN**:
 - All tasks have `docker` (or `container` for WDL 1.1), `cpu`, and `memory` runtime attributes.
-- All resources meet HealthOmics minimums (≥2 vCPU, ≥4 GB).
+- All resources meet HealthOmics minimums (≥2 vCPU, ≥4 GiB).
 
 ### Phase 3: WDL Version Compatibility
 
@@ -132,13 +132,15 @@ AWS HealthOmics requires:
    - Obtain and upload `http(s)://` and `ftp://` resources to S3.
    - Set appropriate S3 storage class (Intelligent-Tiering).
    - Validate checksums after upload.
-4. Create `healthomics.inputs.json` with S3 URIs for all File inputs.
+4. Create `healthomics.inputs.json` with S3 URIs for all File inputs. Keys MUST be bare parameter names, NOT namespaced with the workflow name — see [Workflow Development SOP](./workflow-development.md). Cromwell inputs files namespace every key (`WorkflowName.input`), so ENSURE the namespace is stripped when porting one.
+   - DO NOT rely on `StartRun` to reject a namespaced key. IF the workflow declares a default for that parameter, the key MAY be accepted silently and **the default runs instead of the value you supplied** — the run reports COMPLETED with results that do not reflect the submitted inputs. A namespaced key fails loudly only where the bare parameter is required.
 5. Update any hardcoded paths in command sections to use input variables.
 
 **Done WHEN**:
 - Reference inventory CSV lists all files and sizes.
 - All reference files accessible from S3.
 - `healthomics.inputs.json` uses S3 URIs exclusively.
+- No key in `healthomics.inputs.json` is namespaced with the workflow name.
 - No hardcoded file paths in command sections.
 
 ### Phase 5: Output Collection Strategy
@@ -204,7 +206,7 @@ runtime {
 runtime {
     docker: "<account-id>.dkr.ecr.<region>.amazonaws.com/workflow-name/bwa:0.7.17--h5bf99c6_8"
     cpu: 4
-    memory: "8 GB"
+    memory: "8 GiB"
 }
 ```
 
@@ -230,12 +232,15 @@ workflow MyWorkflow {
 ```
 
 ### S3 Input (Before/After)
+
+The path MUST become an S3 URI, and the workflow namespace MUST be removed from the key.
+
 ```json
-// Before
+// Before (Cromwell)
 { "WorkflowName.reference_fasta": "/path/to/reference.fasta" }
 
-// After
-{ "WorkflowName.reference_fasta": "s3://bucket/references/Homo_sapiens/GATK/GRCh38/Sequence/reference.fasta" }
+// After (HealthOmics)
+{ "reference_fasta": "s3://bucket/references/Homo_sapiens/GATK/GRCh38/Sequence/reference.fasta" }
 ```
 
 ## WDL-Specific Considerations
