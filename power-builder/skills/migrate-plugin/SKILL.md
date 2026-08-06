@@ -425,6 +425,6 @@ testing-strategies/
 
 ### Preserve Intent
 - Don't lose workflows or troubleshooting content
-- If the old power had tool-disabling logic, preserve in extensions
+- If the old power had tool-disabling logic, preserve it in extensions
 - Keep all MCP tool documentation accurate
 - Maintain keyword specificity
