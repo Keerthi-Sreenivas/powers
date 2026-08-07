@@ -87,8 +87,10 @@ This SOP defines how you, the agent, create and deploy genomics workflows for AW
 ### Linting
 - IF the workflow is WDL or CWL, you MUST call `LintAHOWorkflowDefinition` or `LintAHOWorkflowBundle` to validate the workflow.
 - When calling the `Lint*` tools you MUST supply a file path(s) or S3 URI(s) to reference the workflow content
+- You MUST read the verdict from `Return code:` inside `raw_output`. The tool's top-level `"status": "success"` means the linter RAN, not that the workflow is valid — a file that fails to parse is returned as `"status": "success"` with `Return code: 2` in `raw_output`. DO NOT branch on `status` alone.
 - DO NOT proceed to deployment if linting errors exist — resolve them first.
 - You MAY proceed if only warnings remain, but fixing these is desirable.
+- A clean lint means the definition PARSES. It is NOT evidence that HealthOmics will accept it, nor that the workflow is semantically correct — see [Silent Incompatibilities](./migration-guide-for-wdl.md#silent-incompatibilities) for defects that lint clean and run to COMPLETED with the wrong result.
 
 ## Procedure: Deploying a Workflow
 
