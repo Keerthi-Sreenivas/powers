@@ -200,7 +200,7 @@ Documentation is available at https://kiro.dev/docs/powers/
 ### stackgen
 **StackGen Infrastructure as Code** - Design, manage, and deploy cloud infrastructure with StackGen - create appstacks, manage resources, configure environments, and push IaC to Git. Supports AWS, Azure, and GCP.
 
-**MCP Servers:** stackgen (HTTPS)
+**MCP Servers:** stackgen (CLI stdio)
 
 ---
 
