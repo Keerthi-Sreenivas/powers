@@ -2,6 +2,7 @@
 name: findings
 description: List/filter/get/update/delete findings (vulnerabilities, tech-debt issues, upgrade opportunities) by repo, source, severity (exact via --severity or threshold via --min-severity), status, analysis type, or auto-fix transform.
 ---
+
 name: findings
 
 # Findings
@@ -11,6 +12,7 @@ name: findings
 When running `atx ct analysis run` or `atx ct remediation create`, always include `--telemetry`.
 
 Format: `--telemetry "agent=<agent>,executionMode=<mode>"`
+
 - `agent` — the AI assistant driving this session (lowercase, no spaces). Use the real assistant name — e.g. kiro, claude, amazonq, copilot.
 - `executionMode` — `local`
 
@@ -71,14 +73,14 @@ Never present the first page as the complete set when a `nextToken` is present �
 
 Filtering at the CLI is materially faster than pulling everything and filtering after the fact. Each shape below is backed by a server-side index. Combinations that don't match one of these degrade to a full account scan with in-memory filtering and get slow on accounts with thousands of findings.
 
-| User intent | Filter shape |
-|---|---|
-| Findings from one analysis run | `--analysis-id <id>` (alone or combined with anything) |
-| Live findings on one repo | `--repo <slug> --status <s>` |
-| Account-wide triage | `--status <s>` (optionally `+ --severity <level>` for one level, or `+ --min-severity <level>` for a threshold) |
-| One repo, one analysis type | `--repo <slug> --type <t>` (single type only) |
-| Everything under one source | `--source <name>` (alone) |
-| Auto-fixable by a known transform | `--fix-transform <name>` (alone or combined) |
+| User intent                       | Filter shape                                                                                                    |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Findings from one analysis run    | `--analysis-id <id>` (alone or combined with anything)                                                          |
+| Live findings on one repo         | `--repo <slug> --status <s>`                                                                                    |
+| Account-wide triage               | `--status <s>` (optionally `+ --severity <level>` for one level, or `+ --min-severity <level>` for a threshold) |
+| One repo, one analysis type       | `--repo <slug> --type <t>` (single type only)                                                                   |
+| Everything under one source       | `--source <name>` (alone)                                                                                       |
+| Auto-fixable by a known transform | `--fix-transform <name>` (alone or combined)                                                                    |
 
 ### Anti-patterns
 
@@ -108,3 +110,20 @@ atx ct remediation create --ids <finding-id1,finding-id2> --name "Fix name" --te
 - **Tech-debt / upgrade findings** route to an ATX transform (PR/CR).
 
 See the [remediation](workload-continuous-modernization-remediation.md) skill for outcomes by source provider and for handling findings without a `fix` field.
+
+## Prerequisites & errors
+
+Before listing findings, AWS credentials must be valid and the CLI must be able
+to reach the AWS Transform backend (on a connection error, refresh credentials
+with `ada credentials update` and confirm `AWS_REGION`). See the [troubleshooting](workload-continuous-modernization-troubleshooting.md)
+skill for the full actionable-error reference.
+
+**An empty findings list is not automatically "clean."** Before reporting "no
+findings":
+
+- If the read errored (auth/connection), surface the error — do not report `0`.
+- Confirm `AWS_REGION` matches where the analysis ran (findings are region-scoped).
+- Confirm an analysis has actually completed (`atx ct analysis list`); no completed
+  analysis means there is nothing to list yet, not a clean bill of health.
+- On `AccessDenied` / 403: credentials likely expired — refresh them
+  (`ada credentials update`) and retry.
