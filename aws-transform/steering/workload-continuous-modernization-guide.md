@@ -237,10 +237,15 @@ When all steps are done, show a recap of what was accomplished in this session. 
 2. **Explain briefly, then ask.** 1-2 sentences of context max.
 3. **Offer defaults.** Have a recommended option. Make it easy to proceed.
 4. **Show commands.** Always display the `atx ct` command you're running so the user learns the CLI.
-5. **Handle errors plainly.** Say what failed, offer a fix or alternative:
-   - Startup/credentials error → "I couldn't reach the AWS Transform backend. Let's check your AWS credentials (refresh them if they've expired) and that you picked a supported region."
-   - Invalid token → "That token didn't work. Make sure it has `repo` scope."
-   - No repos found → "No repos found in that source. Double-check the org name or path."
+5. **Handle errors plainly.** Say what failed AND the next step — never a bare
+   error, and never an empty result presented as success. Common cases (full
+   reference: the [troubleshooting](workload-continuous-modernization-troubleshooting.md) skill):
+   - `command not found: atx` → "The `atx` CLI isn't installed or isn't on your PATH. Let's install it." (see the `setup` skill), then verify with `atx --version`.
+   - Startup / can't reach backend → "I couldn't reach the AWS Transform backend. Let's check your AWS credentials (refresh them if they've expired) and that you picked a supported region."
+   - Connection error / `ECONNREFUSED` → "I couldn't reach the AWS Transform backend. Refresh your AWS credentials (`ada credentials update`) and confirm `AWS_REGION` is a supported region, then retry."
+   - Invalid/expired token → "That token didn't work. Make sure it has `repo` scope (and is SSO-authorized for the org)."
+   - `AccessDenied` / 403 → "Your AWS credentials look expired. Refresh them (e.g. `ada credentials update`) and confirm `AWS_REGION`, then retry."
+   - No repos / no findings → don't assume it's clean: check credentials, region, and whether an analysis has run before reporting "nothing found." Then, if genuinely empty → "No repos found in that source. Double-check the org name or path (for `--provider local`, `--path` must be the parent directory containing the repos)."
 6. **Let them skip.** "skip", "later", "not now" — move on.
 7. **Let them go back.** If they want to redo a step, accommodate.
 8. **Show progress.** For long operations, show status.
