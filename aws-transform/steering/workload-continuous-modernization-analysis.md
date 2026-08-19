@@ -271,8 +271,8 @@ skill for the full actionable-error reference. Common cases:
 
 - **`command not found: atx`** — the CLI isn't installed/on PATH. Install it (see
   the `setup` skill) and verify with `atx --version`.
-- **Connection error** — the CLI can't reach the AWS Transform backend: refresh AWS credentials (`ada credentials update`) and confirm `AWS_REGION` is a supported region, then retry.
-- **`AccessDenied` / 403** — refresh AWS credentials (`ada credentials update`),
+- **Connection error** — the CLI can't reach the AWS Transform backend: refresh AWS credentials and confirm `AWS_REGION` is a supported region, then retry.
+- **`AccessDenied` / 403** — refresh AWS credentials,
   confirm the role's permissions and `AWS_REGION`, then retry.
 - **`required option '--type <type>' not specified`** — `--type` takes a value; run
   `atx ct analysis run --help` for valid values (e.g. `--type tech-debt-comprehensive`).

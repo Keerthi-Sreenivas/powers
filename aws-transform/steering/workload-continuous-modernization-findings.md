@@ -114,8 +114,7 @@ See the [remediation](workload-continuous-modernization-remediation.md) skill fo
 ## Prerequisites & errors
 
 Before listing findings, AWS credentials must be valid and the CLI must be able
-to reach the AWS Transform backend (on a connection error, refresh credentials
-with `ada credentials update` and confirm `AWS_REGION`). See the [troubleshooting](workload-continuous-modernization-troubleshooting.md)
+to reach the AWS Transform backend (on a connection error, refresh credentials and confirm `AWS_REGION`). See the [troubleshooting](workload-continuous-modernization-troubleshooting.md)
 skill for the full actionable-error reference.
 
 **An empty findings list is not automatically "clean."** Before reporting "no
@@ -125,5 +124,4 @@ findings":
 - Confirm `AWS_REGION` matches where the analysis ran (findings are region-scoped).
 - Confirm an analysis has actually completed (`atx ct analysis list`); no completed
   analysis means there is nothing to list yet, not a clean bill of health.
-- On `AccessDenied` / 403: credentials likely expired — refresh them
-  (`ada credentials update`) and retry.
+- On `AccessDenied` / 403: credentials likely expired — refresh them and retry.
