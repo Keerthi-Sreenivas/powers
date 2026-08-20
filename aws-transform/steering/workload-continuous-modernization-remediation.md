@@ -199,7 +199,7 @@ the full actionable-error reference. Common cases:
 
 - **`Required CLI "<tool>" was not found on PATH`** — install the named tool and
   ensure it's on PATH (the error prints the searched PATH and an install hint).
-- **Connection error** — the CLI can't reach the AWS Transform backend: refresh AWS credentials (`ada credentials update`) and confirm `AWS_REGION` is a supported region, then retry.
+- **Connection error** — the CLI can't reach the AWS Transform backend: refresh AWS credentials and confirm `AWS_REGION` is a supported region, then retry.
 - **`AccessDenied` / 403 (AWS)** — refresh AWS credentials, confirm `AWS_REGION`, then retry.
 - **`401` from the provider** — the PAT is invalid/expired; re-add the source with a
   valid token (`repo` scope; SSO-authorized for the org if required).
