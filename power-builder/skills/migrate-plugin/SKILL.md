@@ -245,25 +245,12 @@ New:
 
 #### 5.3: Remove Non-Spec Fields
 
-Remove from mcp.json (these are Kiro-specific):
+Remove from mcp.json (these are Kiro-specific and are not supported in the plugin format):
 - `disabled`
 - `autoApprove`
 - `disabledTools`
 
-If these need to be preserved, put them in plugin.json extensions:
-
-```json
-{
-  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-  "name": "my-plugin",
-  "extensions": {
-    "dev.kiro": {
-      "disabledTools": ["tool1", "tool2"],
-      "autoApprove": ["tool3"]
-    }
-  }
-}
-```
+These fields should simply be removed. They have no equivalent in the plugin specification.
 
 #### 5.4: Fix Field Compatibility
 
@@ -399,7 +386,7 @@ testing-strategies/
 **Solution:** Skills can reference each other using relative paths from the plugin root: `See [related skill](../other-skill/SKILL.md)`. Or consolidate related content into one skill with references/.
 
 ### Issue: mcp.json has fields not in the spec
-**Solution:** Move Kiro-specific fields (`disabled`, `autoApprove`, `disabledTools`) to `extensions.dev.kiro` in plugin.json. Remove them from mcp.json.
+**Solution:** Remove Kiro-specific fields (`disabled`, `autoApprove`, `disabledTools`) from mcp.json. These have no equivalent in the plugin format.
 
 ### Issue: Power name has uppercase or underscores
 **Solution:** Convert to lowercase with hyphens. `MyPower_Name` becomes `my-power-name`.
@@ -425,6 +412,6 @@ testing-strategies/
 
 ### Preserve Intent
 - Don't lose workflows or troubleshooting content
-- If the old power had tool-disabling logic, preserve it in extensions
+- If the old power had tool-disabling logic, note its removal (no equivalent in plugin format)
 - Keep all MCP tool documentation accurate
 - Maintain keyword specificity

@@ -78,7 +78,7 @@ Create the manifest. Always required.
 - [ ] `$schema` is exactly `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`
 - [ ] `name` matches directory name
 - [ ] `name` is 1-64 chars, lowercase `a-z0-9.-`, no `--` or `..`, starts/ends alphanumeric
-- [ ] No fields beyond: `$schema`, `name`, `version`, `description`, `author`, `homepage`, `repository`, `license`, `keywords`, `extensions`
+- [ ] No fields beyond: `$schema`, `name`, `version`, `description`, `author`, `homepage`, `repository`, `license`, `keywords`
 
 ### 4. Create Skills
 
