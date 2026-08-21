@@ -26,8 +26,7 @@ my-plugin/
 │       ├── scripts/     # Helper scripts (optional)
 │       ├── references/  # Reference docs (optional)
 │       └── assets/      # Templates, configs (optional)
-├── mcp.json             # MCP server config (optional)
-└── com.example.client/  # Client extensions (optional)
+└── mcp.json             # MCP server config (optional)
 ```
 
 ## plugin.json (Manifest)
@@ -62,7 +61,6 @@ Required. Identifies the plugin and the spec version it targets.
 - `repository` - Source repo URL
 - `license` - SPDX identifier recommended
 - `keywords` - Array of search/discovery tags
-- `extensions` - Client-specific data keyed by reverse-domain namespace
 
 The schema defines a fixed set of top-level fields; unknown fields are reported and ignored but do not invalidate the manifest.
 
@@ -218,34 +216,6 @@ Expansion is single-pass, non-recursive. Unrecognized placeholder-like text rema
 
 **Use `PLUGIN_DATA` for:** installed dependencies, generated code, caches, persistent state that survives plugin updates.
 
-## Client Extensions
-
-Client-specific behavior goes in reverse-domain namespaces. Agent Plugins assigns no portable semantics to extension data.
-
-**In plugin.json:**
-```json
-{
-  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-  "name": "my-plugin",
-  "extensions": {
-    "dev.kiro": {
-      "powerCategory": "development"
-    }
-  }
-}
-```
-
-**As a directory:**
-```
-my-plugin/
-├── plugin.json
-├── skills/...
-└── dev.kiro/
-    └── hooks/
-```
-
-Clients ignore extension namespaces they don't implement without validating their contents.
-
 ## Mapping: Kiro Powers to Agent Plugins
 
 | Kiro Power (old) | Agent Plugin (new) | Notes |
@@ -256,8 +226,6 @@ Clients ignore extension namespaces they don't implement without validating thei
 | `mcp.json` | `mcp.json` with `$schema` + `type` per server | Add schema ref and transport type |
 | N/A | `skills/*/scripts/` | Executable helper scripts |
 | N/A | `skills/*/assets/` | Templates and configs |
-| N/A | `extensions` in plugin.json | Client-specific metadata |
-| N/A | `com.client.name/` directory | Client-specific files |
 
 ## Best Practices
 
