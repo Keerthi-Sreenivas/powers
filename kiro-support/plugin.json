@@ -1,6 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "kiro-support",
+  "displayName": "Kiro Support",
   "version": "1.0.0",
   "description": "File and manage AWS Support cases for Kiro issues directly from the IDE. Collects diagnostics and verifies Support API access first — with a ready-to-send admin request when permissions are missing.",
   "author": {
