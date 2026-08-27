@@ -32,10 +32,19 @@ Surface a step only if it fails; if all pass, continue to the task without narra
 
 1. **`uvx` present** — the MCP server launches via `uvx`. If `uvx --version` fails, point to the
    [install guide](https://docs.astral.sh/uv/getting-started/installation/).
-2. **`AWS_PROFILE` set** — confirm `mcp.json` has a real profile, not the `<your-aws-profile>`
-   placeholder. If it's still the placeholder, ask the user to set it and reconnect the server.
+2. **Credentials available** — how Kiro reaches AWS depends on the environment (see
+   [credentials by environment](references/setup.md#credentials-by-environment)):
+   - **IDE (local machine):** Kiro can use the user's local AWS credentials. Confirm `mcp.json`
+     has a real `AWS_PROFILE`, not the `<your-aws-profile>` placeholder. If it's still the
+     placeholder, ask the user to set it and reconnect the server.
+   - **Web (sandbox):** credentials must be initialized in the sandbox — there is no local
+     `~/.aws` profile to fall back on. If the access probe can't locate credentials, do **not**
+     assume a local profile exists: recommend the user set up their AWS credentials and point
+     them to [credentials by environment](references/setup.md#credentials-by-environment).
 3. **Access probe** — run `describe_support_cases` once. Success → proceed. `AccessDenied` or
    `SubscriptionRequiredException` → [setup](references/setup.md). Server won't start → fall back to `aws-mcp`.
+   Credentials not found (e.g. `Unable to locate credentials`, `CredentialsError`) →
+   [credentials by environment](references/setup.md#credentials-by-environment).
 
 ## Available MCP servers
 
