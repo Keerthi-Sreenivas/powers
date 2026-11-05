@@ -25,6 +25,43 @@ To enable fallback: set `"disabled": false` on `aws-mcp` in `mcp.json`, set same
 
 ---
 
+## Credentials by environment
+
+This power runs in two environments, and credentials are supplied differently in each. Detect which
+one you're in from the access-probe result, and guide the user accordingly.
+
+### IDE (local machine)
+
+Kiro has access to the user's machine, so it can use their **local AWS credentials** — a named
+profile in `~/.aws/` (via `aws configure sso` / `aws configure`) referenced by `AWS_PROFILE` in this
+power's `mcp.json`. This is the default flow described under [Onboarding](#onboarding).
+
+- If `mcp.json` still has the `<your-aws-profile>` placeholder, ask the user to set a real profile
+  name and reconnect the server.
+- If the profile exists but tokens expired, run `aws sso login --profile <profile>`.
+
+### Web (sandbox)
+
+There is **no local `~/.aws` profile** in the web sandbox — credentials must be **initialized into
+the sandbox environment** before the power can reach the Support API. If the access probe fails with
+`Unable to locate credentials` (or similar), the credentials were not initialized. Do not assume a
+local profile exists; recommend the user set them up:
+
+1. **Get AWS credentials.** In the AWS console (an account on a Business+ support plan with
+   `support:*`), create an access key: IAM → Users → *your user* → **Security credentials** →
+   **Create access key**. Note the **Access key ID** and **Secret access key**.
+2. **Add them to your profile / environment.** Store them as credentials in your Kiro profile so the
+   sandbox initializes them on start (this is what makes them available to the power). Use the same
+   variable names the power's `mcp.json` expects.
+3. **Reconnect and re-probe.** Restart/reconnect the MCP server, then verify with
+   "List my open Kiro support cases." An empty list = success.
+
+If the primary MCP server can't start in the sandbox, use the CLI fallback (`aws support …
+--region us-east-1`); it reads the **uppercase** `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`
+environment variables, so ensure the initialized credentials are exported under those names.
+
+---
+
 ## Prerequisites
 
 - **Support plan:** Business, Enterprise On-Ramp, or Enterprise.
